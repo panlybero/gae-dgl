@@ -1,4 +1,4 @@
-# This is a fork from shionhonda/gae-dgl fixing the issues that where left unresolved
+# This is a fork from shionhonda/gae-dgl fixing the issues that were left unresolved
 
 
 # GAE-DGL
