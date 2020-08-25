@@ -37,20 +37,21 @@ def main():
     data = load_data(args)
     features = torch.FloatTensor(data.features)
     in_feats = features.shape[1]
-    
+    print(features.shape)
     model = GAE(in_feats, [32,16])
     model.train()
     optim = torch.optim.Adam(model.parameters(), lr=1e-2)
-    
+    loss_function = BCELoss
+
     g = DGLGraph(data.graph)
-    g.ndata['h']
+    g.ndata['h'] = features
 
 
     n_epochs = 500
     losses = []
     print('Training Start')
     for epoch in tqdm(range(n_epochs)):
-        
+        g.ndata['h'] = features
         # normalization
         degs = g.in_degrees().float()
         norm = torch.pow(degs, -0.5)
@@ -60,15 +61,15 @@ def main():
         pos_weight = torch.Tensor([float(adj.shape[0] * adj.shape[0] - adj.sum()) / adj.sum()])
         
         
-        adj_logits = model.forward(g, features)
-        print(torch.sigmoid(adj_logits))
+        adj_logits = model.forward(g)#, features)
+        
         loss = loss_function(adj_logits, adj, pos_weight=pos_weight)
         optim.zero_grad()
         loss.backward()
         optim.step()
         losses.append(loss.item())
         print('Epoch: {:02d} | Loss: {:.5f}'.format(epoch, loss))
-        print(torch.sigmoid(adj_logits))
+        
     
     plt.plot(losses)
     plt.xlabel('iteration')
