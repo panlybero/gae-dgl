@@ -26,7 +26,7 @@ gcn_reduce = fn.sum(msg='m', out='h')  # sum aggregation
 GCN = GraphConv
 
 class GAE(nn.Module):
-    def __init__(self, in_dim, hidden_dims):
+    def __init__(self, in_dim, hidden_dims, device = "cpu"):
         super(GAE, self).__init__()
         layers = [GCN(in_dim, hidden_dims[0], activation =F.relu)]
         if len(hidden_dims)>=2:
@@ -41,9 +41,13 @@ class GAE(nn.Module):
             
         self.layers = nn.ModuleList(layers)
         self.decoder = InnerProductDecoder(activation=lambda x:x)
+        self.device = device
+        if self.device != "cpu":
+            self.cuda()
     
     def forward(self, g):
-        h = g.ndata['h']
+        h = g.ndata['h'].to(self.device)
+        g= g.to(self.device)
         for conv in self.layers:
             h = conv(g, h)
 
@@ -52,7 +56,8 @@ class GAE(nn.Module):
         return adj_rec
 
     def encode(self, g):
-        h = g.ndata['h']
+        h = g.ndata['h'].to(self.device)
+        g= g.to(self.device)
         for conv in self.layers:
             h = conv(g, h)
         return h
@@ -60,7 +65,7 @@ class GAE(nn.Module):
 
 
 class VGAE(nn.Module):
-    def __init__(self, in_dim, hidden_dims,zdim):
+    def __init__(self, in_dim, hidden_dims,zdim, device = "cpu"):
         super(VGAE, self).__init__()
         layers = [GCN(in_dim, hidden_dims[0], activation =F.relu)]
         if len(hidden_dims)>=2:
@@ -79,16 +84,22 @@ class VGAE(nn.Module):
         self.z_log_std = GCN(hidden_dims[-1],zdim)
 
         self.decoder = InnerProductDecoder(activation=lambda x:x)
+        self.device = device
+        if self.device != "cpu":
+            print("switching to ", device)
+            self.to(device)
     
     def forward(self, g):
         h = g.ndata['h']
+        h = h.to(self.device)
+        g = g.to(self.device)
         for conv in self.layers:
             h = conv(g, h)
 
         z_mean = self.z_mean(g,h) 
         z_log_std = self.z_log_std(g,h)
         
-        z = z_mean + torch.normal(torch.zeros(self.zdim),torch.ones(self.zdim)) * z_log_std
+        z = z_mean + torch.normal(torch.zeros(self.zdim).to(self.device),torch.ones(self.zdim).to(self.device)) * z_log_std
 
         g.ndata['h'] = z
         adj_rec = self.decoder(z)
@@ -96,23 +107,28 @@ class VGAE(nn.Module):
 
     def encode(self, g):
         h = g.ndata['h']
+        h = h.to(self.device)
+        g = g.to(self.device)
         for conv in self.layers:
             h = conv(g, h)
 
-        z = self.z_mean(g,h) + torch.normal(0,1) * self.z_log_std(g,h)
+
+        z_mean = self.z_mean(g,h) 
+        z_log_std = self.z_log_std(g,h)
+        
+        z = z_mean + torch.normal(torch.zeros(self.zdim).to(self.device),torch.ones(self.zdim).to(self.device)) * z_log_std
         return z
 
 
     def _KLDiv(self,z_mean,z_log_std):
-        print(z_mean.shape)
-        exit()
+    
         return 0.5 * torch.sum(torch.exp(z_log_std)**2 +z_mean**2 -1 -z_log_std)
 
     def vgae_loss(self,z,output,target, norm, pos_weight):
         
         z_mean,z_log_std = z
-        
-        loss = norm*BCELoss(output,target, reduction ="mean", pos_weight = pos_weight) - self._KLDiv(*z)
+
+        loss = norm*BCELoss(output,target.to(self.device), reduction ="mean", pos_weight = pos_weight.to(self.device)) - self._KLDiv(*z)
         return loss
 
 

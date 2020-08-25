@@ -29,8 +29,8 @@ args = parser.parse_args()
 device = torch.device("cuda:{}".format(args.gpu_id) if torch.cuda.is_available() else "cpu")
 
 def collate(samples):
-    #for g in samples:
-    #    g.to(torch.device(device))
+    for g in samples:
+        g.to(torch.device(device))
     bg = dgl.batch(samples)
     return bg
 
@@ -41,11 +41,12 @@ class Trainer:
         print('Total Parameters:', sum([p.nelement() for p in self.model.parameters()]))
 
     def iteration(self, g, train=True):
-        adj = g.adjacency_matrix().to_dense()
+        adj = g.adjacency_matrix().to_dense().to(device)
         # alleviate imbalance
-        pos_weight = ((adj.shape[0] * adj.shape[0] - adj.sum()) / adj.sum())
+        pos_weight = ((adj.shape[0] * adj.shape[0] - adj.sum()) / adj.sum()).to(device)
         adj_logits = self.model.forward(g)
         loss = BCELoss(adj_logits, adj, pos_weight=pos_weight)
+        
         if train:
             self.optim.zero_grad()
             loss.backward()
@@ -71,7 +72,8 @@ def main():
         os.makedirs(os.path.join(save_dir, 'zinc250k.png'))
 
     model = GAE(args.in_dim, args.hidden_dims)
-    #model.cuda()
+    model.to(device)
+    
     print('Loading data')
     with open(args.data_file, 'rb') as f:
         graphs = dill.load(f)

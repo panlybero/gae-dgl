@@ -38,7 +38,7 @@ def main():
     features = torch.FloatTensor(data.features)
     in_feats = features.shape[1]
     print(features.shape)
-    model = VGAE(in_feats, [32,16], zdim = 10)
+    model = VGAE(in_feats, [32,16], zdim = 10, device = device)
     model.train()
     optim = torch.optim.Adam(model.parameters(), lr=1e-2)
     loss_function = BCELoss
@@ -55,11 +55,10 @@ def main():
         # normalization
         adj = g.adjacency_matrix().to_dense()
         norm = adj.shape[0] * adj.shape[0] / float((adj.shape[0] * adj.shape[0] - adj.sum()) * 2)
-        print(norm)
         #g.ndata['norm'] = norm.unsqueeze(1)
         
 
-        pos_weight = torch.Tensor([float(adj.shape[0] * adj.shape[0] - adj.sum()) / adj.sum()])
+        pos_weight = torch.Tensor([float(adj.shape[0] * adj.shape[0] - adj.sum()) / adj.sum()]).to(device)
         
         
         z,adj_logits = model.forward(g)#, features)
