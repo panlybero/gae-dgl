@@ -116,15 +116,15 @@ class VGAE(nn.Module):
         z_mean = self.z_mean(g,h) 
         z_log_std = self.z_log_std(g,h)
         
-        z = z_mean + torch.normal(torch.zeros(self.zdim).to(self.device),torch.ones(self.zdim).to(self.device)) * z_log_std
+        z = z_mean #+ torch.normal(torch.zeros(self.zdim).to(self.device),torch.ones(self.zdim).to(self.device)) * z_log_std
         return z
 
 
     def _KLDiv(self,z_mean,z_log_std):
     
-        return 0.5 * torch.sum(torch.exp(z_log_std)**2 +z_mean**2 -1 -z_log_std)
+        return -0.5 * torch.mean(torch.exp(z_log_std)**2 +z_mean**2 -1 -z_log_std)
 
-    def vgae_loss(self,z,output,target, norm, pos_weight):
+    def compute_loss(self,z,output,target, norm, pos_weight):
         
         z_mean,z_log_std = z
 
