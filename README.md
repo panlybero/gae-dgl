@@ -1,3 +1,6 @@
+# This is a fork from shionhonda/gae-dgl fixing the issues that were left unresolved
+
+
 # GAE-DGL
 Graph Auto-encoder [1] implemented with DGL by Shion Honda.  
 Official implementation by the authors is [here](https://github.com/tkipf/gae) (TensorFlow, Python 2.7).  
